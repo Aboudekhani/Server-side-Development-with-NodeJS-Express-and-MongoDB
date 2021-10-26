@@ -2,10 +2,48 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const authenticate = require('../authenticate')
 const multer =require('multer')
+const cors =require('./cors')
 
+const storage = multer.diskStorage({
+    destination:(req,file,cb)=>{
+        cb(null,'public/images')
+    },
+    filename:(req,file,cb)=>{
+        cb(null,file.originalname)
+    },
+})
 
-const dishRouter = express.Router();
+const imageFileFilter=(req,file,cb)=>{
+    if(!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)){
+        return cb(new Error('You can only upload image files'))
+    }
+    else{
+        cb(null,true)
+    }
+}
 
-dishRouter.use(bodyParser.json());
+const upload= multer({storage:storage,fileFilter: imageFileFilter})
+const uploadRouter = express.Router();
 
-dishRouter.route('/')
+uploadRouter.use(bodyParser.json());
+
+uploadRouter.route('/')
+.get(cors.cors, authenticate.verifyUser, (req, res, next) => {
+    res.statusCode = 403;
+    res.end('GET operation not supported on /uploadimages');
+})
+.put(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
+    res.statusCode = 403;
+    res.end('PUT operation not supported on /dishes');
+})
+.delete(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
+    res.statusCode = 403;
+    res.end('DELET operation not supported on /dishes');
+})
+.post(cors.corsWithOptions, authenticate.verifyUser, authenticate.verifyAdmin, upload.single('imageFile'),
+    (req,res)=>{
+        res.statusCode=200 
+        res.setHeader('Content-Type','application/json')
+        res.json(req.file)
+})
+module.exports = uploadRouter
